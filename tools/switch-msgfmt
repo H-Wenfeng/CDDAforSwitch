@@ -1,0 +1,27 @@
+#!/bin/sh
+# CMake invokes msgfmt as: msgfmt -f input.po -o output.mo.
+# Babel is already available in the build environment and produces compatible
+# GNU MO files, so adapt that small command-line difference here.
+input=
+output=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -f)
+            input=$2
+            shift 2
+            ;;
+        -o)
+            output=$2
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+if [ -z "$input" ] || [ -z "$output" ]; then
+    echo "usage: switch-msgfmt -f input.po -o output.mo" >&2
+    exit 2
+fi
+exec "${PYTHON:-python3}" \
+    "$(dirname "$0")/switch_msgfmt.py" -f "$input" -o "$output"

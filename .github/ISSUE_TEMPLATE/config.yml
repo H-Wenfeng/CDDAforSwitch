@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Upstream Cataclysm: DDA issues
+    url: https://github.com/CleverRaven/Cataclysm-DDA/issues
+    about: Report gameplay and content issues that also occur on desktop to the upstream project.
+  - name: Cataclysm: DDA community
+    url: https://discourse.cataclysmdda.org/
+    about: General gameplay discussion and support.

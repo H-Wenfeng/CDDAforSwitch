@@ -1,0 +1,52 @@
+name: Switch port bug
+description: Report a problem specific to CDDA for Switch
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please confirm that the problem is specific to the Switch port. Gameplay and content bugs that also occur on desktop belong in the upstream Cataclysm: DDA tracker.
+  - type: input
+    id: version
+    attributes:
+      label: CDDA for Switch version
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: launch-mode
+    attributes:
+      label: Homebrew launch mode
+      options:
+        - Full RAM (hold R while launching a game)
+        - Album/applet mode
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start CDDA for Switch
+        2. Open ...
+        3. Press ...
+    validations:
+      required: true
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Logs and screenshots
+      description: Attach a screenshot and user/config/debug.log when available. Remove private save data before uploading.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Include system language, docked/handheld mode, mods, custom tilesets, or USB devices when relevant.

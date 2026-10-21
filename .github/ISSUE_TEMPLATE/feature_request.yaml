@@ -1,0 +1,30 @@
+name: Switch port feature request
+description: Suggest an improvement specific to CDDA for Switch
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Requests for core gameplay or content should be sent to the upstream Cataclysm: DDA project. Use this form for Switch controls, touch UI, packaging, performance, and other port-specific ideas.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What Switch-specific problem would this change solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add mockups, controller diagrams, or examples from other Switch homebrew when useful.
