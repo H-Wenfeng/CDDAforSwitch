@@ -11,8 +11,11 @@ The port adds Switch-oriented defaults, controller mappings, a touch shortcut
 bar, a compact full keyboard, native text input, and automatic English or
 Simplified Chinese language selection.
 
-> This is an unofficial community port. It is not affiliated with or endorsed
-> by Nintendo or the upstream Cataclysm: DDA project.
+> Nintendo Switch is a trademark of Nintendo. This is an independent,
+> unofficial community port and is not affiliated with, endorsed by, sponsored
+> by, or associated with Nintendo. This project contains no Nintendo source
+> code, SDK, firmware, cryptographic keys, ROMs, game content, or circumvention
+> tools.
 
 ## Download and install
 
