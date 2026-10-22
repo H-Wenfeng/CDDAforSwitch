@@ -46,6 +46,11 @@ bool remove_directory( const std::filesystem::path &path );
 bool rename_file( const std::filesystem::path &old_path, const std::filesystem::path &new_path );
 bool rename_file( const cata_path &old_path, const cata_path &new_path );
 
+// Commit pending filesystem changes at a logical save boundary.  Most
+// platforms flush through the regular file APIs; Switch needs an explicit
+// filesystem commit so writes survive application exit or power loss.
+bool commit_filesystem_changes();
+
 std::filesystem::path abs_path( const std::filesystem::path &path );
 
 std::string read_entire_file( const std::filesystem::path &path );

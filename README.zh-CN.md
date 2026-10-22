@@ -16,7 +16,7 @@
 
 ## 下载与安装
 
-1. 从 GitHub Releases 下载 `CDDAforSwitch-v0.1.0.zip`。
+1. 从 GitHub Releases 下载 `CDDAforSwitch-v0.1.1.zip`。
 2. 将压缩包内的 `CDDAforSwitch` 文件夹解压到 SD 卡的 `switch` 目录。
 3. 最终目录结构应包含：
 
@@ -74,6 +74,8 @@ Home/End、Page Up/Down、F1-F12、Shift、Ctrl 和 Alt。
 - 针对 1280×720 掌机屏幕设置紧凑界面默认值。
 - 首次启动自动迁移到轻量图块集，降低内存占用。
 - 使用程序目录下可写的 `user/` 保存存档、配置和日志。
+- 在 Horizon 上安全替换存档文件，并显式提交 SD 卡写入。
+- 世界名和角色名可以使用中文，磁盘路径会自动转换为安全的 ASCII 名称。
 - 提前创建配置目录，并检测 Switch 系统语言。
 - 使用 SDL2 Tiles 静态交叉编译为 AArch64 Horizon 程序；当前关闭声音。
 
@@ -82,7 +84,7 @@ Home/End、Page Up/Down、F1-F12、Shift、Ctrl 和 Alt。
 - 这是实验性 Homebrew 移植版，尚未覆盖测试 CDDA 的全部功能和模组。
 - CDDA 的命令数量远多于手柄按键。罕见组合键请使用触摸快捷栏、完整虚拟
   键盘或 USB 键盘。
-- v0.1.0 尚未启用声音。
+- v0.1.1 尚未启用声音。
 - 简体中文翻译来自上游 0.I 语言目录，少量文本仍可能显示英文。
 - 如果启动时立即退出，请确认 `.nro`、`data/` 和 `gfx/` 位于同一目录，且
   Homebrew Menu 使用完整内存模式。诊断日志位于 `user/config/debug.log`。

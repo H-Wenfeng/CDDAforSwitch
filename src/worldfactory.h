@@ -57,10 +57,18 @@ struct WORLD {
     public:
         /**
          * @returns A path to a folder in the file system that should contain
-         * all the world specific files. It depends on @ref world_name,
-         * changing that will also change the result of this function.
+         * all the world specific files. New worlds derive it from
+         * @ref world_name; loaded worlds preserve their existing directory.
          */
         cata_path folder_path() const;
+
+        /**
+         * Preserve the actual directory name when loading an existing world.
+         * This is separate from world_name because some platforms need an
+         * ASCII-only on-disk name while still displaying the original UTF-8
+         * world name to the player.
+         */
+        void set_folder_name( const std::string &name );
 
         std::string world_name;
         options_manager::options_container WORLD_OPTIONS;
@@ -72,6 +80,10 @@ struct WORLD {
         std::vector<mod_id> active_mod_order;
         std::string timestamp;
 
+    private:
+        std::string folder_name;
+
+    public:
         WORLD();
         explicit WORLD( const std::string &name );
         void COPY_WORLD( const WORLD *world_to_copy );

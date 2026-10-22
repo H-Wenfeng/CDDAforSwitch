@@ -3474,9 +3474,21 @@ bool game::save_maps()
     map &here = get_map();
 
     try {
+#if defined(__SWITCH__)
+        DebugLog( D_INFO, DC_ALL ) << "Switch save: saving active map";
+#endif
         here.save();
+#if defined(__SWITCH__)
+        DebugLog( D_INFO, DC_ALL ) << "Switch save: saving overmaps";
+#endif
         overmap_buffer.save(); // can throw
+#if defined(__SWITCH__)
+        DebugLog( D_INFO, DC_ALL ) << "Switch save: saving map buffer";
+#endif
         MAPBUFFER.save(); // can throw
+#if defined(__SWITCH__)
+        DebugLog( D_INFO, DC_ALL ) << "Switch save: maps complete";
+#endif
         return true;
     } catch( const std::exception &err ) {
         popup( _( "Failed to save the maps: %s" ), err.what() );
@@ -3488,6 +3500,9 @@ bool game::save_player_data()
 {
     const cata_path playerfile = PATH_INFO::player_base_save_path();
 
+#if defined(__SWITCH__)
+    DebugLog( D_INFO, DC_ALL ) << "Switch save: saving player data";
+#endif
     bool saved_data;
     if( world_generator->active_world->has_compression_enabled() ) {
         std::stringstream save;
@@ -3497,11 +3512,25 @@ bool game::save_player_data()
         std::filesystem::path tmp_path = save_path;
         tmp_path.concat( ".tmp" ); // NOLINT(cata-u8-path)
         std::optional<zzip> z = zzip::load( save_path );
-        saved_data = z->add_file( ( playerfile + SAVE_EXTENSION ).get_unrelative_path().filename(),
-                                  save.str() );
-        if( saved_data && z->compact_to( tmp_path, 2.0 ) ) {
-            z.reset();
-            saved_data = rename_file( tmp_path, save_path );
+        if( !z ) {
+            saved_data = false;
+        } else {
+            saved_data = z->add_file( ( playerfile + SAVE_EXTENSION ).get_unrelative_path().filename(),
+                                      save.str() );
+            if( saved_data ) {
+#if defined(__SWITCH__)
+                DebugLog( D_INFO, DC_ALL ) << "Switch save: checking player archive compaction";
+#endif
+                const bool compacted = z->compact_to( tmp_path, 2.0 );
+#if defined(__SWITCH__)
+                DebugLog( D_INFO, DC_ALL ) << "Switch save: player archive compaction result=" <<
+                                           compacted;
+#endif
+                if( compacted ) {
+                    z.reset();
+                    saved_data = rename_file( tmp_path, save_path );
+                }
+            }
         }
     } else {
         saved_data = write_to_file( playerfile + SAVE_EXTENSION, [&]( std::ostream & fout ) {
@@ -3520,6 +3549,11 @@ bool game::save_player_data()
     }, _( "quick shortcuts" ) );
 #endif
     const bool saved_diary = u.get_avatar_diary()->store();
+#if defined(__SWITCH__)
+    DebugLog( D_INFO, DC_ALL ) << "Switch save: player data complete (main=" << saved_data
+                               << ", map memory=" << saved_map_memory << ", log=" << saved_log
+                               << ", diary=" << saved_diary << ")";
+#endif
     return saved_data && saved_map_memory && saved_log && saved_diary
 #if defined(__ANDROID__)
            && saved_shortcuts
@@ -3543,14 +3577,26 @@ bool game::save_achievements()
     constexpr size_t suffix_len = 24 + 1;
     constexpr size_t max_name_len = FILENAME_MAX - suffix_len;
 
+#if defined(__SWITCH__)
+    // Horizon/devkitPro cannot reliably create paths containing UTF-8 names
+    // while running in the C locale.  The original name remains in the JSON;
+    // only the on-disk filename needs an ASCII representation.
+    const std::string storage_name = base64_encode( "CDDA_ACHIEVEMENT:" + u.name );
+    const bool name_was_truncated = storage_name.size() > max_name_len;
+#else
     const size_t name_len = u.name.size();
     // Here -1 leaves space for the ~
     const size_t truncated_name_len = ( name_len >= max_name_len ) ? ( max_name_len - 1 ) : name_len;
+    const bool name_was_truncated = truncated_name_len != name_len;
+#endif
 
     std::ostringstream achievement_file_path;
 
     achievement_file_path << achievement_dir;
 
+#if defined(__SWITCH__)
+    achievement_file_path << storage_name.substr( 0, max_name_len );
+#else
     if( get_options().has_option( "ENCODING_CONV" ) && !get_option<bool>( "ENCODING_CONV" ) ) {
         // Use the default locale to replace non-printable characters with _ in the player name.
         std::locale locale{ "C" };
@@ -3566,9 +3612,10 @@ bool game::save_achievements()
             return !is_char_allowed( c );
         }, '_' );
     }
+#endif
 
     // Add a ~ if the player name was actually truncated.
-    achievement_file_path << ( ( truncated_name_len != name_len ) ? "~-" : "-" );
+    achievement_file_path << ( name_was_truncated ? "~-" : "-" );
 
     // Add world timestamp to distinguish characters from different worlds with the same name
     achievement_file_path << world_generator->active_world->timestamp << "-";
@@ -3635,6 +3682,9 @@ spell_events &game::spell_events_subscriber()
 
 bool game::save()
 {
+#if defined(__SWITCH__)
+    DebugLog( D_INFO, DC_ALL ) << "Switch save: begin";
+#endif
     std::chrono::seconds time_since_load =
         std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - time_of_last_load );
@@ -3666,6 +3716,13 @@ bool game::save()
                 fout.imbue( std::locale::classic() );
                 fout << total_time_played.count();
             } );
+            if( !commit_filesystem_changes() ) {
+                debugmsg( "game data was written but could not be committed to the filesystem" );
+                return false;
+            }
+#if defined(__SWITCH__)
+            DebugLog( D_INFO, DC_ALL ) << "Switch save: filesystem commit complete";
+#endif
 #if defined(EMSCRIPTEN)
             // This will allow the window to be closed without a prompt, until do_turn()
             // is called.

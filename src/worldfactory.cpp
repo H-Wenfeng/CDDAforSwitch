@@ -48,6 +48,43 @@ std::unique_ptr<worldfactory> world_generator;
   */
 static const int max_worldname_len = 32;
 
+#if defined(__SWITCH__)
+static constexpr std::string_view switch_world_folder_prefix = "#WORLD-";
+static constexpr std::string_view switch_world_name_marker = "CDDA_WORLD:";
+
+static std::string switch_world_folder_name( const std::string &world_name )
+{
+    const std::string encoded = base64_encode( std::string( switch_world_name_marker ) + world_name );
+    // base64_encode always prefixes newly encoded strings with '#'.
+    return std::string( switch_world_folder_prefix ) + encoded.substr( 1 );
+}
+
+static bool decode_switch_world_folder_name( const std::string &folder_name,
+        std::string &world_name )
+{
+    if( folder_name.compare( 0, switch_world_folder_prefix.size(),
+                            switch_world_folder_prefix ) != 0 ) {
+        return false;
+    }
+
+    const std::string encoded_name = folder_name.substr( switch_world_folder_prefix.size() );
+    if( encoded_name.empty() || encoded_name.size() % 4 != 0 ) {
+        return false;
+    }
+    const std::string payload = "#" + encoded_name;
+    const std::string decoded = base64_decode( payload );
+    if( base64_encode( decoded ) != payload ) {
+        return false;
+    }
+    if( decoded.compare( 0, switch_world_name_marker.size(), switch_world_name_marker ) != 0 ) {
+        return false;
+    }
+
+    world_name = decoded.substr( switch_world_name_marker.size() );
+    return !world_name.empty();
+}
+#endif
+
 save_t::save_t( const std::string &name ): name( name ) {}
 
 std::string save_t::decoded_name() const
@@ -96,13 +133,26 @@ WORLD::WORLD( const std::string &name )
 void WORLD::COPY_WORLD( const WORLD *world_to_copy )
 {
     world_name = world_to_copy->world_name + "_copy";
+    folder_name.clear();
     WORLD_OPTIONS = world_to_copy->WORLD_OPTIONS;
     active_mod_order = world_to_copy->active_mod_order;
 }
 
 cata_path WORLD::folder_path() const
 {
+    if( !folder_name.empty() ) {
+        return PATH_INFO::savedir_path() / folder_name;
+    }
+#if defined(__SWITCH__)
+    return PATH_INFO::savedir_path() / switch_world_folder_name( world_name );
+#else
     return PATH_INFO::savedir_path() / world_name;
+#endif
+}
+
+void WORLD::set_folder_name( const std::string &name )
+{
+    folder_name = name;
 }
 
 bool WORLD::save_exists( const save_t &name ) const
@@ -150,6 +200,11 @@ WORLD *worldfactory::add_world( std::unique_ptr<WORLD> retworld )
             !copy_file( overmaps_dict, retworld->folder_path() / "overmaps.dict" ) ) {
             return nullptr;
         }
+    }
+    if( !commit_filesystem_changes() ) {
+        DebugLog( D_ERROR, DC_ALL ) << "Unable to commit new world[" << retworld->world_name <<
+                                    "] data to the filesystem";
+        return nullptr;
     }
     return ( all_worlds[ retworld->world_name ] = std::move( retworld ) ).get();
 }
@@ -357,6 +412,11 @@ bool WORLD::save() const
     }
 
     world_generator->get_mod_manager().save_mods_list( this );
+    if( !commit_filesystem_changes() ) {
+        DebugLog( D_ERROR, DC_ALL ) << "Unable to commit world[" << world_name <<
+                                    "] data to the filesystem";
+        return false;
+    }
     return true;
 }
 
@@ -384,15 +444,28 @@ void worldfactory::init()
                                                     save_index - start_of_file );
         }
 
-        // the directory name is the name of the world
+        // Keep the physical directory name separate from the display name.
+        // Switch filesystem paths are safest as ASCII, so new UTF-8 names are
+        // encoded reversibly while legacy directories remain readable.
         std::string worldname;
         size_t name_index = world_dir.find_last_of( "/\\" );
-        worldname = world_dir.substr( name_index + 1 );
+        const std::string folder_name = world_dir.substr( name_index + 1 );
+        worldname = folder_name;
+#if defined(__SWITCH__)
+        decode_switch_world_folder_name( folder_name, worldname );
+#endif
+
+        if( all_worlds.count( worldname ) != 0 ) {
+            DebugLog( D_ERROR, DC_ALL ) << "Ignoring duplicate world display name [" << worldname <<
+                                        "] from directory [" << folder_name << "]";
+            return;
+        }
 
         // create and store the world
         all_worlds[worldname] = std::make_unique<WORLD>();
         // give the world a name
         all_worlds[worldname]->world_name = worldname;
+        all_worlds[worldname]->set_folder_name( folder_name );
 
         bool save = false;
 
@@ -2455,7 +2528,8 @@ void worldfactory::delete_world( const std::string &worldname, const bool delete
 
     for( cata_path &file_path : file_paths ) {
         std::filesystem::path folder_path = file_path.get_unrelative_path().parent_path();
-        while( folder_path.filename() != std::filesystem::u8path( worldname ) ) {
+        const std::filesystem::path world_root = worldpath.get_unrelative_path();
+        while( folder_path != world_root && folder_path.has_parent_path() ) {
             directory_paths.insert( folder_path );
             folder_path = folder_path.parent_path();
         }

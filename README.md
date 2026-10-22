@@ -19,7 +19,7 @@ Simplified Chinese language selection.
 
 ## Download and install
 
-1. Download `CDDAforSwitch-v0.1.0.zip` from the GitHub Releases page.
+1. Download `CDDAforSwitch-v0.1.1.zip` from the GitHub Releases page.
 2. Extract the `CDDAforSwitch` folder to `sdmc:/switch/`.
 3. Confirm that the resulting layout includes:
 
@@ -83,6 +83,8 @@ changed from the in-game interface options.
 - Compact UI defaults targeting the 1280x720 handheld display.
 - First-run migration to a lightweight tileset to reduce memory use.
 - Writable per-install `user/` directory for saves, configuration, and logs.
+- Reliable save replacement and explicit SD-card commits on Horizon.
+- UTF-8 world and character names with ASCII-safe on-disk paths.
 - Early configuration-directory creation and Switch locale detection.
 - Static AArch64 Horizon build with SDL2 Tiles; sound is currently disabled.
 
@@ -92,7 +94,7 @@ changed from the in-game interface options.
   CDDA feature or mod.
 - CDDA has more commands than a controller can expose. Use the shortcut bar,
   full virtual keyboard, or a USB keyboard for uncommon combinations.
-- Sound is not enabled in v0.1.0.
+- Sound is not enabled in v0.1.1.
 - The included Simplified Chinese catalog may leave some strings in English.
 - If the application exits during startup, verify that `data/`, `gfx/`, and
   the `.nro` are together and that Homebrew Menu is running with full RAM.

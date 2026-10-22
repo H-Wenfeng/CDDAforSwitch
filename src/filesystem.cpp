@@ -17,6 +17,10 @@
 #include <emscripten.h>
 #endif
 
+#if defined(__SWITCH__)
+#include <switch.h>
+#endif
+
 #include "cata_utility.h"
 #include "debug.h"
 
@@ -198,39 +202,66 @@ bool rename_file( const std::filesystem::path &old_path, const std::filesystem::
     std::error_code exists_error;
     const bool destination_exists = std::filesystem::exists( new_path, exists_error );
     if( exists_error ) {
+        DebugLog( D_ERROR, DC_ALL ) << "Unable to inspect save destination [" << new_path.u8string() <<
+                                    "]: " << exists_error.message();
         return false;
     }
 
     std::filesystem::path backup_path = new_path;
     backup_path += std::filesystem::u8path( ".bak" );
+    std::error_code backup_exists_error;
+    bool backup_available = std::filesystem::exists( backup_path, backup_exists_error );
+    if( backup_exists_error ) {
+        DebugLog( D_ERROR, DC_ALL ) << "Unable to inspect save backup [" << backup_path.u8string() <<
+                                    "]: " << backup_exists_error.message();
+        return false;
+    }
 
     if( destination_exists ) {
-        std::error_code cleanup_error;
-        std::filesystem::remove( backup_path, cleanup_error );
-        if( cleanup_error ) {
-            return false;
+        if( backup_available ) {
+            std::error_code cleanup_error;
+            std::filesystem::remove( backup_path, cleanup_error );
+            if( cleanup_error ) {
+                DebugLog( D_ERROR, DC_ALL ) << "Unable to remove stale save backup [" <<
+                                            backup_path.u8string() << "]: " << cleanup_error.message();
+                return false;
+            }
         }
 
         std::error_code backup_error;
         try_rename( new_path, backup_path, backup_error );
         if( backup_error ) {
+            DebugLog( D_ERROR, DC_ALL ) << "Unable to back up save [" << new_path.u8string() <<
+                                        "]: " << backup_error.message();
             return false;
         }
+        backup_available = true;
     }
 
     std::error_code promote_error;
     try_rename( old_path, new_path, promote_error );
     if( promote_error ) {
-        if( destination_exists ) {
+        DebugLog( D_ERROR, DC_ALL ) << "Unable to promote temporary save [" << old_path.u8string()
+                                    << "] to [" << new_path.u8string() << "]: " <<
+                                    promote_error.message();
+        if( backup_available ) {
             std::error_code restore_error;
             try_rename( backup_path, new_path, restore_error );
+            if( restore_error ) {
+                DebugLog( D_ERROR, DC_ALL ) << "Unable to restore save backup [" <<
+                                            backup_path.u8string() << "]: " << restore_error.message();
+            }
         }
         return false;
     }
 
-    if( destination_exists ) {
+    if( backup_available ) {
         std::error_code cleanup_error;
         std::filesystem::remove( backup_path, cleanup_error );
+        if( cleanup_error ) {
+            DebugLog( D_WARNING, DC_ALL ) << "Unable to remove save backup [" <<
+                                          backup_path.u8string() << "]: " << cleanup_error.message();
+        }
     }
     return true;
 #else
@@ -240,6 +271,20 @@ bool rename_file( const std::filesystem::path &old_path, const std::filesystem::
         std::filesystem::rename( old_path, new_path, ec );
     } while( ec && ++attempts < 3 );
     return !ec;
+#endif
+}
+
+bool commit_filesystem_changes()
+{
+#if defined(__SWITCH__)
+    const Result result = fsdevCommitDevice( "sdmc" );
+    if( R_FAILED( result ) ) {
+        DebugLog( D_ERROR, DC_ALL ) << "fsdevCommitDevice(sdmc) failed with result " << result;
+        return false;
+    }
+    return true;
+#else
+    return true;
 #endif
 }
 
