@@ -158,34 +158,7 @@ void ofstream_wrapper::close()
         std::filesystem::remove( temp_path, ec );
         throw std::runtime_error( "writing to file failed" );
     }
-    std::error_code ec2;
-#if defined(__SWITCH__)
-    // Horizon's filesystem rename does not replace an existing destination.
-    // Preserve the old file until the temporary file has been promoted, so a
-    // failed save can still be rolled back.
-    std::filesystem::path backup_path = path;
-    backup_path += std::filesystem::u8path( ".bak" );
-    std::error_code exists_error;
-    const bool destination_exists = std::filesystem::exists( path, exists_error ) && !exists_error;
-    if( destination_exists ) {
-        std::error_code cleanup_error;
-        std::filesystem::remove( backup_path, cleanup_error );
-        std::filesystem::rename( path, backup_path, ec2 );
-    }
-    if( !ec2 ) {
-        std::filesystem::rename( temp_path, path, ec2 );
-    }
-    if( ec2 && destination_exists ) {
-        std::error_code restore_error;
-        std::filesystem::rename( backup_path, path, restore_error );
-    } else if( !ec2 && destination_exists ) {
-        std::error_code cleanup_error;
-        std::filesystem::remove( backup_path, cleanup_error );
-    }
-#else
-    std::filesystem::rename( temp_path, path, ec2 );
-#endif
-    if( ec2 ) {
+    if( !rename_file( temp_path, path ) ) {
         // Leave the temp path, so the user can move it if possible.
         throw std::runtime_error( "moving temporary file \"" + temp_path.u8string() + "\" failed" );
     }

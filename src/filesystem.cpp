@@ -176,12 +176,71 @@ bool rename_file( const cata_path &old_path, const cata_path &new_path )
 bool rename_file( const std::filesystem::path &old_path, const std::filesystem::path &new_path )
 {
     setFsNeedsSync();
+#if defined(__SWITCH__)
+    // Horizon's filesystem rename operation cannot replace an existing file.
+    // This matters for compressed game saves: they are written to a temporary
+    // .zzip file and then promoted over the previous save with rename_file().
+    // Keep the previous destination as a rollback copy until promotion succeeds.
+    std::error_code equivalent_error;
+    if( std::filesystem::equivalent( old_path, new_path, equivalent_error ) && !equivalent_error ) {
+        return true;
+    }
+
+    const auto try_rename = []( const std::filesystem::path &from,
+                                const std::filesystem::path &to, std::error_code &error ) {
+        int attempts = 0;
+        do {
+            error.clear();
+            std::filesystem::rename( from, to, error );
+        } while( error && ++attempts < 3 );
+    };
+
+    std::error_code exists_error;
+    const bool destination_exists = std::filesystem::exists( new_path, exists_error );
+    if( exists_error ) {
+        return false;
+    }
+
+    std::filesystem::path backup_path = new_path;
+    backup_path += std::filesystem::u8path( ".bak" );
+
+    if( destination_exists ) {
+        std::error_code cleanup_error;
+        std::filesystem::remove( backup_path, cleanup_error );
+        if( cleanup_error ) {
+            return false;
+        }
+
+        std::error_code backup_error;
+        try_rename( new_path, backup_path, backup_error );
+        if( backup_error ) {
+            return false;
+        }
+    }
+
+    std::error_code promote_error;
+    try_rename( old_path, new_path, promote_error );
+    if( promote_error ) {
+        if( destination_exists ) {
+            std::error_code restore_error;
+            try_rename( backup_path, new_path, restore_error );
+        }
+        return false;
+    }
+
+    if( destination_exists ) {
+        std::error_code cleanup_error;
+        std::filesystem::remove( backup_path, cleanup_error );
+    }
+    return true;
+#else
     std::error_code ec;
     int attempts = 0;
     do {
         std::filesystem::rename( old_path, new_path, ec );
     } while( ec && ++attempts < 3 );
     return !ec;
+#endif
 }
 
 std::string abs_path( const std::string &path )
